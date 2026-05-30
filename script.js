@@ -78,6 +78,20 @@ async function updatePresence() {
       activityDiv.innerHTML = "";
     }
 
+function setStatus(text, color) {
+  const dot = document.getElementById("dot");
+  const status = document.getElementById("status");
+
+  status.style.opacity = 0;
+
+  setTimeout(() => {
+    status.textContent = text;
+    dot.style.background = color;
+    dot.style.boxShadow = `0 0 12px ${color}`;
+    status.style.opacity = 1;
+  }, 150);
+}
+    
     // SPOTIFY
     const spotifyDiv = document.getElementById("spotify");
 
