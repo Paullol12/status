@@ -1,5 +1,31 @@
 const USER_ID = "1500771253160644639";
 
+const dot = document.getElementById("dot");
+const statusText = document.getElementById("status");
+const usernameEl = document.getElementById("username");
+const avatarEl = document.getElementById("avatar");
+const bioDiv = document.getElementById("bio");
+const activityDiv = document.getElementById("activity");
+const spotifyDiv = document.getElementById("spotify");
+
+function setStatus(text, color) {
+  statusText.style.opacity = 0;
+
+  setTimeout(() => {
+    statusText.textContent = text;
+    dot.style.background = color;
+    dot.style.boxShadow = `0 0 12px ${color}`;
+    statusText.style.opacity = 1;
+  }, 120);
+}
+
+function getAvatarURL(id, avatar) {
+  if (!avatar) {
+    return `https://cdn.discordapp.com/embed/avatars/0.png`;
+  }
+  return `https://cdn.discordapp.com/avatars/${id}/${avatar}.png?size=256`;
+}
+
 async function updatePresence() {
   try {
     const response = await fetch(
@@ -7,42 +33,33 @@ async function updatePresence() {
     );
 
     const json = await response.json();
-    const data = json.data;
+    const data = json?.data;
+    if (!data) return;
 
     // USERNAME
-    document.getElementById("username").textContent =
-      data.discord_user.display_name ||
-      data.discord_user.username;
+    usernameEl.textContent =
+      data.discord_user?.display_name ||
+      data.discord_user?.username ||
+      "Unknown";
 
     // AVATAR
-    const avatarURL =
-      `https://cdn.discordapp.com/avatars/${USER_ID}/${data.discord_user.avatar}.png`;
-
-    document.getElementById("avatar").src = avatarURL;
-
-    // STATUS
-    const status = data.discord_status;
-
-    document.getElementById("status").textContent = status;
-
-    const dot = document.getElementById("dot");
-
-    if (status === "online") {
-      dot.style.background = "#43b581";
-    } else if (status === "idle") {
-      dot.style.background = "#faa61a";
-    } else if (status === "dnd") {
-      dot.style.background = "#f04747";
-    } else {
-      dot.style.background = "gray";
-    }
-
-    // BIO / CUSTOM STATUS
-    const bioActivity = data.activities.find(
-      a => a.type === 4
+    avatarEl.src = getAvatarURL(
+      USER_ID,
+      data.discord_user?.avatar
     );
 
-    const bioDiv = document.getElementById("bio");
+    // STATUS
+    const status = data.discord_status || "offline";
+
+    if (status === "online") setStatus("online", "#43b581");
+    else if (status === "idle") setStatus("idle", "#faa61a");
+    else if (status === "dnd") setStatus("dnd", "#f04747");
+    else setStatus("offline", "gray");
+
+    // BIO / CUSTOM STATUS
+    const bioActivity = data.activities?.find(
+      a => a.type === 4
+    );
 
     if (bioActivity?.state) {
       bioDiv.innerHTML = `
@@ -56,12 +73,8 @@ async function updatePresence() {
     }
 
     // ACTIVITIES
-    const activityDiv = document.getElementById("activity");
-
-    const activities = data.activities.filter(
-      a =>
-        a.name !== "Custom Status" &&
-        a.type !== 4
+    const activities = (data.activities || []).filter(
+      a => a.type !== 4
     );
 
     if (activities.length > 0) {
@@ -69,7 +82,7 @@ async function updatePresence() {
 
       activityDiv.innerHTML = `
         <div class="section">
-          <h3>${act.name}</h3>
+          <h3>${act.name || "Activity"}</h3>
           <p>${act.details || ""}</p>
           <small>${act.state || ""}</small>
         </div>
@@ -78,35 +91,15 @@ async function updatePresence() {
       activityDiv.innerHTML = "";
     }
 
-function setStatus(text, color) {
-  const dot = document.getElementById("dot");
-  const status = document.getElementById("status");
-
-  status.style.opacity = 0;
-
-  setTimeout(() => {
-    status.textContent = text;
-    dot.style.background = color;
-    dot.style.boxShadow = `0 0 12px ${color}`;
-    status.style.opacity = 1;
-  }, 150);
-}
-    
     // SPOTIFY
-    const spotifyDiv = document.getElementById("spotify");
-
-    if (data.listening_to_spotify) {
+    if (data.listening_to_spotify && data.spotify) {
       spotifyDiv.innerHTML = `
         <div class="section">
           <h3>Listening to Spotify</h3>
 
-          <img
-            class="spotify-cover"
-            src="${data.spotify.album_art_url}"
-          >
+          <img class="spotify-cover" src="${data.spotify.album_art_url}" />
 
           <p><strong>${data.spotify.song}</strong></p>
-
           <small>${data.spotify.artist}</small>
         </div>
       `;
@@ -115,10 +108,11 @@ function setStatus(text, color) {
     }
 
   } catch (err) {
-    console.error(err);
+    console.error("Presence update failed:", err);
+    setStatus("offline", "gray");
   }
 }
 
+// initial + interval
 updatePresence();
-
-setInterval(updatePresence, 1000);
+setInterval(updatePresence, 5000);
